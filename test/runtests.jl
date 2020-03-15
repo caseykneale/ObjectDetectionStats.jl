@@ -29,7 +29,7 @@ end
     @test intersection_over_union( a, b ) == 0.0
 end
 
-@testset "Statistics"
+@testset "Statistics" begin
     ods_machine     = ObjectDetectionScore( 3 )
     pred_scores     = [ 0.2 0.5 0.9; #3
                         0.2 0.9 0.5; #2
