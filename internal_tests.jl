@@ -2,12 +2,7 @@ using Pkg
 Pkg.activate("ObjectDetectionStats/")
 using ObjectDetectionStats
 
-Classes = 3
 ods_machine = ObjectDetectionScore( 3 )
-
-#So...  we need to
-
-
 pred_scores     = [ 0.2 0.5 0.9; #3
                     0.2 0.9 0.5; #2
                     0.9 0.5 0.2  #1
