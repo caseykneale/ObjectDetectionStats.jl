@@ -70,7 +70,7 @@ end
     @test all(ods_machine.FN .== [3,0,0])
 end
 
-@testset "3 wrong class locations" begin
+@testset "3 wrong class locations with correct predictions" begin
     ods_machine     = ObjectDetectionScore( 3 )
     pred_scores     = [ 0.2 0.9 0.5 ; #2
                         0.2 0.9 0.5;  #2
@@ -89,7 +89,7 @@ end
     ods_machine( hcl, ccl )
 
     @test all(ods_machine.TP .== [0,0,0])
-    @test all(ods_machine.FP .== [3,0,0])
+    @test all(ods_machine.FP .== [0,3,0])
     @test all(ods_machine.FN .== [0,3,0])
 end
 
