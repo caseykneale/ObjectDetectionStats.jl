@@ -92,16 +92,16 @@ function (ods::ObjectDetectionScore)(   predictions::HotClassLocalization,
             Pos[best_ind] = best_IoU > 0.0
         end
     end
-    class_TPs, class_FPs, class_FNs = [ zeros(Int, predictions.classes) for _ in 1:3]
-
+    class_TPs, class_FPs, class_FNs = [ zeros(Int, predictions.classes) for _ in 1:3 ]
     for (i, class) in enumerate( 1:predictions.classes )
         class_inds = findall( first.( GT.class_location ) .== class )
         predicted_positives = findall( cold_preds[ pos_inds ] .== class)
         incorrect_pos = .!Pos[ predicted_positives ]
+
+        class_FPs[i] = sum(incorrect_pos)
         if length( class_inds ) > 0
             class_TPs[i] = sum( Pos[class_inds] )
-            class_FPs[i] = sum(incorrect_pos)#sum( .!Pos[class_inds] )
-            class_FNs[i] = length( class_inds ) - class_TPs[i] - class_FPs[i]
+            class_FNs[i] = length( class_inds ) - class_TPs[i]
         end
     end
     add!( ods, class_TPs, class_FPs, class_FNs )
