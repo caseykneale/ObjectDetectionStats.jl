@@ -30,7 +30,7 @@ end
 end
 
 @testset "Statistics"
-    ods_machine = ObjectDetectionScore( 3 )
+    ods_machine     = ObjectDetectionScore( 3 )
     pred_scores     = [ 0.2 0.5 0.9; #3
                         0.2 0.9 0.5; #2
                         0.9 0.5 0.2  #1
@@ -51,7 +51,7 @@ end
     ccl = ColdClassLocalization( GT_cold_encodings, GT_locations )
 
     ods_machine( hcl, ccl )
-    @test ods_machine.TP == [0,0,1]
-    @test ods_machine.FP == [1,0,0]
-    @test ods_machine.FN == [1,0,0]
+    @test all(ods_machine.TP .== [0,0,1])
+    @test all(ods_machine.FP .== [1,0,0])
+    @test all(ods_machine.FN .== [1,0,0])
 end
