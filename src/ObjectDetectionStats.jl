@@ -8,7 +8,7 @@ module ObjectDetectionStats
     export HotClassLocalization, ColdClassLocalization,
         ObjectDetectionScore, add!, classwise_precision,
         classwise_recall, classwise_F1, macro_precision,
-        macro_recall, macro_F1, classwise_PR
+        macro_recall, macro_F1, classwise_PR_estimate
 
     include("EnsembledStatistics.jl")
     export

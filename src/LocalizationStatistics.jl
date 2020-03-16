@@ -170,22 +170,47 @@ function macro_F1( ods::ObjectDetectionScore )
 end
 
 """
-    classwise_PR(  predictions::HotClassLocalization,
+    classwise_PR_estimate(  predictions::HotClassLocalization,
                         GT::ColdClassLocalization;
                         IoU = 0.5, K = 100 )
 
-Estimates a PR curve for all classes at K confidence levels (bound between 0 and 1),
+Estimates a PR curve for all classes(columnwise) at K confidence levels (bound between 0 and 1),
 at a single intersection over union threshhold (IoU).
 
 Note: this is not a true PR curve where only the values of the predicted scores are used.
 This provides a more coarse, but faster to compute version.
 """
-function classwise_PR(  predictions::HotClassLocalization,
+function classwise_PR_estimate(  predictions::HotClassLocalization,
                         GT::ColdClassLocalization;
                         IoU = 0.5, K = 100 )
     class_no = GT.class_no
     precisions, recalls = zeros(K, class_no), zeros(K, class_no)
     for (i, interval) in enumerate( 0 : ( 1.0 / (K - 1) ) : 1.0 )
+        ods = ObjectDetectionScore( class_no, IoU, interval )
+        ods( predictions, GT )
+        precisions[i,:] = classwise_precision( ods )
+        recalls[i,:] = classwise_recall( ods )
+    end
+    return precisions, recalls
+end
+
+"""
+    classwise_PR(  predictions::HotClassLocalization,
+                        GT::ColdClassLocalization;
+                        IoU = 0.5 )
+
+Generates PR curves for all classes(columnwise) at K confidence levels (bound between 0 and 1),
+at a single intersection over union threshhold (IoU).
+"""
+function classwise_PR(  predictions::HotClassLocalization,
+                        GT::ColdClassLocalization;
+                        IoU = 0.5, eps = 1e-4 )
+    class_no = GT.class_no
+    digits = convert(Int, round( -log10( eps ) ) )
+    scores = unique.( round.(predictions.scores[:], digits = digits ) )
+    K = length(scores)
+    precisions, recalls = zeros(K, class_no), zeros(K, class_no)
+    for (i, interval) in enumerate(scores)
         ods = ObjectDetectionScore( class_no, IoU, interval )
         ods( predictions, GT )
         precisions[i,:] = classwise_precision( ods )
