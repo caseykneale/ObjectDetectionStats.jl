@@ -123,6 +123,17 @@ Returns the classwise recall of an ObjectDetectionScore instance.
 """
 classwise_recall( ods::ObjectDetectionScore ) = ods.TP ./ ( ods.TP .+ ods.FN )
 
+"""
+    classwise_F1(ods::ObjectDetectionScore)
+
+Returns the classwise F1 measure of an ObjectDetectionScore instance.
+
+"""
+function classwise_F1( ods::ObjectDetectionScore )
+    p = classwise_precision(ods)
+    r = classwise_recall(ods)
+    return 2.0 * ( (p .* r) ./ (p .+ r) )
+end
 
 """
     precision(ods::ObjectDetectionScore)
@@ -130,7 +141,7 @@ classwise_recall( ods::ObjectDetectionScore ) = ods.TP ./ ( ods.TP .+ ods.FN )
 Returns the precision of an ObjectDetectionScore instance of all classes.
 
 """
-function precision(ods::ObjectDetectionScore)
+function macro_precision(ods::ObjectDetectionScore)
     tps, fps = sum( ods.TP ), sum( ods.FP )
     return tps ./ ( tps .+ fps )
 end
@@ -141,7 +152,44 @@ end
 Returns the precision of an ObjectDetectionScore instance of all classes.
 
 """
-function recall(ods::ObjectDetectionScore)
+function macro_recall(ods::ObjectDetectionScore)
     tps, fns = sum( ods.TP ), sum( ods.FN )
     return tps ./ ( tps .+ fns )
+end
+
+"""
+    classwise_F1(ods::ObjectDetectionScore)
+
+Returns the F1 measure of an ObjectDetectionScore instance of all classes.
+
+"""
+function macro_F1( ods::ObjectDetectionScore )
+    p = macro_precision(ods)
+    r = macro_recall(ods)
+    return 2.0 * ( (p .* r) ./ (p .+ r) )
+end
+
+"""
+    classwise_PR(  predictions::HotClassLocalization,
+                        GT::ColdClassLocalization;
+                        IoU = 0.5, K = 100 )
+
+Estimates a PR curve for all classes at K confidence levels (bound between 0 and 1),
+at a single intersection over union threshhold (IoU).
+
+Note: this is not a true PR curve where only the values of the predicted scores are used.
+This provides a more coarse, but faster to compute version.
+"""
+function classwise_PR(  predictions::HotClassLocalization,
+                        GT::ColdClassLocalization;
+                        IoU = 0.5, K = 100 )
+    class_no = GT.class_no
+    precisions, recalls = zeros(K, class_no), zeros(K, class_no)
+    for (i, interval) in enumerate( 0 : ( 1.0 / (K - 1) ) : 1.0 )
+        ods = ObjectDetectionScore( class_no, IoU, interval )
+        ods( predictions, GT )
+        precisions[i,:] = classwise_precision( ods )
+        recalls[i,:] = classwise_recall( ods )
+    end
+    return precisions, recalls
 end
