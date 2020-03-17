@@ -83,7 +83,7 @@ function (ods::ObjectDetectionScore)(   predictions::HotClassLocalization,
             if ( !Pos[ i ] ) && ( cold_preds[p] == gt_cold )
                 #is overlapped...
                 iou = intersection_over_union( gt_box, predictions.locations[ p ] )
-                if (iou >= ods.IoU_Threshold) && (positive_preds[ i ] > best_score)
+                if (iou >= ods.IoU_threshold) && (positive_preds[ i ] > best_score)
                     best_score, best_ind = positive_preds[ i ], p
                 end
             end
