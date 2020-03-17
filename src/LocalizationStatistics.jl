@@ -63,7 +63,7 @@ end
 """
     (ods::ObjectDetectionScore)( predictions::HotClassLocalization, GT::ColdClassLocalization )
 
-Use an ObjectDetectionScore instance to store prediction statistics.
+Use an ObjectDetectionScore instance to calculate and store prediction statistics for a single image.
 
 """
 function (ods::ObjectDetectionScore)(   predictions::HotClassLocalization,
@@ -77,19 +77,19 @@ function (ods::ObjectDetectionScore)(   predictions::HotClassLocalization,
     #Assume classwise distinction is not valuable here...
     #Find the best match for a given predictor to a given GT
     for ( gt_cold, gt_box ) in GT.class_location
-        best_IoU, best_ind = 0.0, missing
+        best_score, best_ind = 0.0, missing
         for ( i, p ) in enumerate( pos_inds )
             #Is this a suitable prediction? Avoid double dipping
             if ( !Pos[ i ] ) && ( cold_preds[p] == gt_cold )
-                #find best overlap...
+                #is overlapped...
                 iou = intersection_over_union( gt_box, predictions.locations[ p ] )
-                if iou > best_IoU
-                    best_IoU, best_ind = iou, p
+                if (iou >= ods.IoU_Threshold) && (positive_preds[ i ] > best_score)
+                    best_score, best_ind = positive_preds[ i ], p
                 end
             end
         end
         if !ismissing(best_ind)
-            Pos[best_ind] = best_IoU > 0.0
+             Pos[best_ind] = true
         end
     end
     class_TPs, class_FPs, class_FNs = [ zeros(Int, predictions.classes) for _ in 1:3 ]
@@ -218,3 +218,14 @@ function classwise_PR(  predictions::HotClassLocalization,
     end
     return precisions, recalls
 end
+
+
+
+#Image -> GT( x1,y1,x2,y2 ) + prediction( scores matrix ) + prediction( locations )
+#Data -> 1000x Images
+#To calculate PR
+#Positive predictions are first considered
+#       Loop over unique score values
+#       IoU's must be stored
+#       The highest vote will always win!
+#
