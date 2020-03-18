@@ -108,12 +108,12 @@ function (ods::ObjectDetectionScore)(   predictions::HotClassLocalization,
 end
 
 """
-    classwise_precision(ods::ObjectDetectionScore)
+    micro_precision(ods::ObjectDetectionScore)
 
 Returns the classwise precision of an ObjectDetectionScore instance.
 
 """
-classwise_precision(ods::ObjectDetectionScore) = ods.TP ./ ( ods.TP .+ ods.FP )
+micro_precision(ods::ObjectDetectionScore) = ods.TP ./ ( ods.TP .+ ods.FP )
 
 """
     classwise_recall(ods::ObjectDetectionScore)
@@ -121,29 +121,29 @@ classwise_precision(ods::ObjectDetectionScore) = ods.TP ./ ( ods.TP .+ ods.FP )
 Returns the classwise recall of an ObjectDetectionScore instance.
 
 """
-classwise_recall( ods::ObjectDetectionScore ) = ods.TP ./ ( ods.TP .+ ods.FN )
+micro_recall( ods::ObjectDetectionScore ) = ods.TP ./ ( ods.TP .+ ods.FN )
 
 """
-    classwise_F1(ods::ObjectDetectionScore)
+    micro_F1(ods::ObjectDetectionScore)
 
 Returns the classwise F1 measure of an ObjectDetectionScore instance.
 
 """
-function classwise_F1( ods::ObjectDetectionScore )
+function micro_F1( ods::ObjectDetectionScore )
     p = classwise_precision(ods)
     r = classwise_recall(ods)
     return 2.0 * ( (p .* r) ./ (p .+ r) )
 end
 
 """
-    precision(ods::ObjectDetectionScore)
+    macroprecision(ods::ObjectDetectionScore)
 
 Returns the precision of an ObjectDetectionScore instance of all classes.
 
 """
 function macro_precision(ods::ObjectDetectionScore)
     tps, fps = sum( ods.TP ), sum( ods.FP )
-    return tps ./ ( tps .+ fps )
+    return sum( tps ./ ( tps .+ fps ) ) / length(ods.TP)
 end
 
 """
@@ -154,7 +154,7 @@ Returns the precision of an ObjectDetectionScore instance of all classes.
 """
 function macro_recall(ods::ObjectDetectionScore)
     tps, fns = sum( ods.TP ), sum( ods.FN )
-    return tps ./ ( tps .+ fns )
+    return sum( tps ./ ( tps .+ fns ) )  / length(ods.TP)
 end
 
 """
@@ -218,14 +218,3 @@ function classwise_PR(  predictions::HotClassLocalization,
     end
     return precisions, recalls
 end
-
-
-
-#Image -> GT( x1,y1,x2,y2 ) + prediction( scores matrix ) + prediction( locations )
-#Data -> 1000x Images
-#To calculate PR
-#Positive predictions are first considered
-#       Loop over unique score values
-#       IoU's must be stored
-#       The highest vote will always win!
-#
