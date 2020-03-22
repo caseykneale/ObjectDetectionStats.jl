@@ -8,6 +8,8 @@ end
 """
     HotClassLocalization(scores::Matrix{Float64, 2}, locations::Vector{ Box })
 
+Creates a HotClassLocalization instance which handles predicted bounding boxes.
+
 """
 function HotClassLocalization(scores::Matrix{Float64}, locations::Vector{ Box })
     len, classes = size(scores)
@@ -22,6 +24,8 @@ end
 """
     ColdClassLocalization( cold_encodings::Vector{Int}, locations::Vector{Box} )
 
+Creates a ColdClassLocalization instance which handles ground truth bounding boxes.
+
 """
 function ColdClassLocalization( cold_encodings::Vector{Int}, locations::Vector{Box} )
     return ColdClassLocalization( cold_encodings .=> locations )
@@ -35,6 +39,12 @@ mutable struct ObjectDetectionScore
     score_threshold::Float64
 end
 
+"""
+    ObjectDetectionScore(class_no)
+
+Creates an ObjectDetectionScore instance from the known static number of classes in a dataset.
+
+"""
 function ObjectDetectionScore(class_no)
     return ObjectDetectionScore(    zeros(Int, class_no),
                                     zeros(Int, class_no),
@@ -42,6 +52,12 @@ function ObjectDetectionScore(class_no)
                                     0.5, 0.5 )
 end
 
+"""
+    ObjectDetectionScore(class_no)
+
+Creates an ObjectDetectionScore instance from the known static number of classes in a dataset, the acceptable intersection over union measure, and prediction threshold.
+
+"""
 function ObjectDetectionScore( class_no, IoU_eps, score_eps )
     return ObjectDetectionScore(    zeros(Int, classes),
                                     zeros(Int, classes),
