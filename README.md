@@ -8,4 +8,6 @@
 [![Build Status](https://api.cirrus-ci.com/github/caseykneale/ObjectDetectionStats.jl.svg)](https://cirrus-ci.com/github/caseykneale/ObjectDetectionStats.jl)
 
 # Overview
-Basic package with functions to calculate object detection statistics.
+This is a basic package with functions to calculate object detection statistics. This package also handles several kinds of bounding box coordinate systems, intersection over union measures, etc. Please note: this is an early release of this package and it's accuracy is not guaranteed for statistical evaluation. It is released because several of it's dependencies are helpful for another package in the works
+
+Early views of image-wise precision, accuracy, F1 measure are currently included. Please feel free to contribute!
