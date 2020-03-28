@@ -1,4 +1,4 @@
-struct Box
+mutable struct Box
     upper_left_x::Number
     upper_left_y::Number
     lower_right_x::Number
@@ -35,6 +35,19 @@ Calculates the area of a Box instance.
 
 """
 area( a::Box ) = ( a.lower_right_x - a.upper_left_x ) * ( a.lower_right_y - a.upper_left_y )
+
+"""
+    translate(a::Box, x::Number,y::Number)
+
+translates a box by the input x & y coordinates.
+"""
+function translate(a::Box, x::Number = 0, y::Number = 0)
+    a.upper_left_x  -= x
+    a.upper_left_y  -= y
+    a.lower_right_x -= x
+    a.lower_right_y -= y
+    return a
+end
 
 """
     intersection_area( a::Box, b::Box )

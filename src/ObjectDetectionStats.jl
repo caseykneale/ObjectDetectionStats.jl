@@ -1,8 +1,8 @@
 module ObjectDetectionStats
 
     include("LocalizationMeasures.jl")
-    export Box, barycenterbox, LLURtoULLR, area, intersection_area,
-        intersection_over_union
+    export Box, barycenterbox, LLURtoULLR, translate,
+        area, intersection_area, intersection_over_union
 
     include("LocalizationStatistics.jl")
     export HotClassLocalization, ColdClassLocalization,
