@@ -1,7 +1,7 @@
 name = "ObjectDetectionStats"
 uuid = "06718956-e3b8-45c5-a167-688b8218b63e"
 authors = ["Casey Kneale"]
-version = "0.1.1"
+version = "0.1.2"
 
 [compat]
 julia = "^1"
