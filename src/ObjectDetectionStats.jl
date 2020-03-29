@@ -1,7 +1,7 @@
 module ObjectDetectionStats
 
     include("LocalizationMeasures.jl")
-    export Box, :(==), barycenterbox, LLURtoULLR, translate,
+    export Box, ==, barycenterbox, LLURtoULLR, translate,
         clamp, area, intersection_area, intersection_over_union
 
     include("LocalizationStatistics.jl")
