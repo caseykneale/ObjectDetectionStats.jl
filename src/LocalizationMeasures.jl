@@ -8,7 +8,7 @@ end
 
 """
     Base.:(==)(a::Box, b::Box)::Bool
-    
+
 Tests for equivalence between two Box instances.
 """
 function Base.:(==)(a::Box, b::Box)::Bool
@@ -50,11 +50,12 @@ Calculates the area of a Box instance.
 area( a::Box ) = ( a.lower_right_x - a.upper_left_x ) * ( a.lower_right_y - a.upper_left_y )
 
 """
-    translate(a::Box, x::Number,y::Number)::Box
+    translate!(a::Box, x::Number,y::Number)::Box
 
-translates a box by the input x & y coordinates.
+Translates a box by the input x & y coordinates. This is an inplace operation.
+
 """
-function translate(a::Box, x::Number = 0, y::Number = 0)::Box
+function translate!(a::Box, x::Number = 0, y::Number = 0)::Box
     a.upper_left_x  += x
     a.upper_left_y  += y
     a.lower_right_x += x
@@ -62,6 +63,26 @@ function translate(a::Box, x::Number = 0, y::Number = 0)::Box
     return a
 end
 
+"""
+    translate(a::Box, x::Number,y::Number)::Box
+
+Translates a box by the input x & y coordinates.
+"""
+translate(a::Box, x::Number = 0, y::Number = 0)::Box = translate( copy( a ), x, y )
+
+"""
+    clamp!(a::Box, bound::Box)::Box
+
+Clamps a `Box` instance `a` to be within a bounded `Box` region `bound`. This is an inplace operation.
+
+"""
+function clamp!(a::Box, bound::Box)::Box
+    a.upper_left_x  = (a.upper_left_x < bound.upper_left_x) ? bound.upper_left_x : a.upper_left_x
+    a.upper_left_y  = (a.upper_left_y < bound.upper_left_y) ? bound.upper_left_y : a.upper_left_y
+    a.lower_right_x = (a.lower_right_x > bound.lower_right_x) ? bound.lower_right_x : a.lower_right_x
+    a.lower_right_y = (a.lower_right_y > bound.lower_right_y) ? bound.lower_right_y : a.lower_right_y
+    return a
+end
 
 """
     clamp(a::Box, bound::Box)::Box
@@ -69,13 +90,7 @@ end
 Clamps a `Box` instance `a` to be within a bounded `Box` region `bound`.
 
 """
-function clamp(a::Box, bound::Box)::Box
-    a.upper_left_x  = (a.upper_left_x < bound.upper_left_x) ? bound.upper_left_x : a.upper_left_x
-    a.upper_left_y  = (a.upper_left_y < bound.upper_left_y) ? bound.upper_left_y : a.upper_left_y
-    a.lower_right_x = (a.lower_right_x > bound.lower_right_x) ? bound.lower_right_x : a.lower_right_x
-    a.lower_right_y = (a.lower_right_y > bound.lower_right_y) ? bound.lower_right_y : a.lower_right_y
-    return a
-end
+clamp(a::Box, bound::Box)::Box = clamp!( copy(a), bound )
 
 """
     intersection_area( a::Box, b::Box )::Number
