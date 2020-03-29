@@ -6,8 +6,8 @@ using Test
     a            = Box(5,5,15,15)
     trans_result = translate( a, -5, -5 )
     @test trans_result                          == Box(0,0,10,10)
-    @test clamp(trans_result, Box(5,5,15,15))   == Box(5,5,10,10)
-    @test clamp(trans_result, Box(0,0, 5, 5))   == Box(0,0, 5, 5)
+    @test ObjectDetectionStats.clamp(trans_result, Box(5,5,15,15))   == Box(5,5,10,10)
+    @test ObjectDetectionStats.clamp(trans_result, Box(0,0, 5, 5))   == Box(0,0, 5, 5)
 end
 
 @testset "Box Area Tests" begin
