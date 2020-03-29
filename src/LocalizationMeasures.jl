@@ -68,7 +68,7 @@ end
 
 Translates a box by the input x & y coordinates.
 """
-translate(a::Box, x::Number = 0, y::Number = 0)::Box = translate( deepcopy( a ), x, y )
+translate(a::Box, x::Number = 0, y::Number = 0)::Box = translate!( deepcopy( a ), x, y )
 
 """
     clamp!(a::Box, bound::Box)::Box
