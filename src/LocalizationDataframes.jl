@@ -127,15 +127,6 @@ function intersection_over_union( a::DataFrame, b::DataFrame )::DataFrame
     return combine( map( x -> sort(x, :Intersection_Over_Union, rev = true)[1,:], groupby( output, :ID_A ) ) )
 end
 
-mutable struct ObjectDetectionStats
-    predictions::Vector{DataFrame}
-    groundtruth::Vector{DataFrame}
-    IoU_map::Vector{DataFrame}
-    classnames::Vector{Symbol}
-    len::Int
-end
-
-
 """
     potential_scores( ods::ObjectDetectionStats; IoU_threshold = 0.5 )
 
@@ -165,45 +156,41 @@ function potential_scores( cur_IoU_df::DataFrame; IoU_threshold = 0.5 )
     return TP_or_FN, FP_or_FN
 end
 
+mutable struct ObjectDetectionStats
+    TP_or_FN::Union{ Missing, DataFrame }
+    FP_or_FN::Union{ Missing, DataFrame }
+    classnames::Vector{ Symbol }
+    IoU_threshold::Float64
+end
+
 """
-    ObjectDetectionStats(   predictions::Vector{DataFrame},
-                            groundtruth::Vector{DataFrame},
-                            classnames::Vector{Symbol} )::ObjectDetectionStats
+    ObjectDetectionStats( classnames::Vector{Symbol}; IoU_threshold = 0.5 )
 
 Instantiates an `ObjectDetectionStats` object.
 
 """
-function ObjectDetectionStats(  predictions::Vector{DataFrame},
-                                groundtruth::Vector{DataFrame},
-                                classnames::Vector{Symbol} )::ObjectDetectionStats
-    len = length(predictions)
-    @assert len == length(groundtruth) "Prediction and groundtruth Vector's must have the same length."
-    area!( predictions )
-    highest_vote!( predictions, classnames )
-    area!( groundtruth )
-    IoU_map = [ intersection_over_union( p, gt ) for (p, gt) in zip( predictions, groundtruth) ]
-    return ObjectDetectionStats( predictions, groundtruth, IoU_map, classnames, len )
+function ObjectDetectionStats( classnames::Vector{Symbol}; IoU_threshold = 0.5 )
+    return ObjectDetectionStats( missing, missing, classnames, IoU_threshold )
 end
 
+"""
+    (ods::ObjectDetectionStats)( predictions::DataFrame, groundtruth::DataFrame )
 
+Add an example to an `ObjectDetectionStats` instance and evaluate its scores.
 
-# each prediction maps to every GT
-# predictions sorted by their confidence scores (highest to lowest)
-# Each prediction can ONLY map to one GT
-#  for each fixed prediction -> [GT] the prediction score is static
-#  Need to find "most likely hit" via IoU.
-#So sort by confidence and IoU
-# Now for each group of predictions, remove everything but the top ranked ones
-#Now we have the most representative prediction for each prediction to [GT]
-#Find TP-or-FN mappings
-#Find FP-or-FN mappings
+"""
+function (ods::ObjectDetectionStats)( predictions::DataFrame, groundtruth::DataFrame)
+    area!( predictions )
+    highest_vote!( predictions, ods.classnames )
+    area!( groundtruth )
+    IoU_map = intersection_over_union( predictions, groundtruth )
+    TP_or_FN, FP_or_FN = potential_scores( IoU_map; IoU_threshold = ods.IoU_threshold )
+    ods.TP_or_FN = ismissing(ods.TP_or_FN) ? TP_or_FN : vcat( ods.TP_or_FN, TP_or_FN )
+    ods.FP_or_FN = ismissing(ods.FP_or_FN) ? FP_or_FN : vcat( ods.FP_or_FN, FP_or_FN )
+    return nothing
+end
 
 using DataFrames
-a = DataFrame(Dict([ :a => [1,1,1,2,2,2,3,3,3], :b => randn(9)]))
-x,z,t = DataFrame.( collect( groupby(a, :a) ) )
-
-a
-
 
 KeyDF = DataFrame( Dict( [    :a               => [0.8, 0.1, 0.1],
                               :b               => [0.1, 0.7, 0.1],
@@ -215,31 +202,23 @@ KeyDF = DataFrame( Dict( [    :a               => [0.8, 0.1, 0.1],
                          ] ) )
 
 GT = DataFrame( Dict( [     :class_labels     => [:a, :b, :c],
-                                :upper_left_x     => [12.5, 10.0, 16.0],
-                                :lower_right_x    => [17.5, 20.0, 60.0],
-                                :upper_left_y     => [7.50, 5.00, 16.0],
-                                :lower_right_y    => [12.5, 15.0, 20.0]
+                            :upper_left_x     => [12.5, 10.0, 16.0],
+                            :lower_right_x    => [17.5, 20.0, 60.0],
+                            :upper_left_y     => [7.50, 5.00, 16.0],
+                            :lower_right_y    => [12.5, 15.0, 20.0]
                       ] ) )
 
-ods = ObjectDetectionStats(  [KeyDF], [GT], [:a,:b,:c] )
+ods = ObjectDetectionStats( [ :a, :b, :c ]; IoU_threshold = 0.5 )
 
-score( ods, detection_threshold = 0.5, IoU_threshold = 0.5 )
+ods( KeyDF, GT )
+
+ods.FP_or_FN
 
 
-@show ods.IoU_map[1]
+function PR_curve( ods::ObjectDetectionStats, class_label::Symbol )
 
-#@benchmark join( KeyDF, KeyDFB, kind = :cross; makeunique = true )
-#new_df = intersection_over_union( area( KeyDF ), area( KeyDFB ) )
-@show( new_df )
+end
 
-# Pkg.add("DataFrames")
-# using DataFrames
-#
-# b = DataFrame(  (:A => [1,2,1,2,2,2,3,3,3], :B => collect(1:9) )  )
-#
-# for gdf in groupby( b, :A )
-#     gdf.B = map(x -> (x.B % 2) == 1, eachrow(gdf))
-#     println(gdf)
-# end
-#
-# b
+function average_precision( ods::ObjectDetectionStats, class_number::Symbol )
+
+end
