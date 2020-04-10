@@ -2,6 +2,35 @@
 using ObjectDetectionStats
 using Test
 
+@testset "Basic Data Ops" begin
+    z = DataFrame( (:a => [1,2], :B => [120,13], :c => [111,111]))
+    @test highest_vote!(z, [:a,:B,:c])[:Highest_Vote] .== [ :B, :c ]
+
+    barycenter = DataFrame( Dict( [   :notneeded    => ["a", "b"],
+                                      :center_x     => [15, 15],
+                                      :center_y     => [10, 10],
+                                      :width        => [5, 10],
+                                      :height       => [5, 10]
+                                  ]) )
+
+    @test has_required_columns(barycenter, [ :center_x, :center_y, :width, :height ]  )
+    @test !has_required_columns(barycenter, [ :center_x, :center_y, :width, :height, :NOPE ]  )
+    #Test DF for comparing all others with
+    KeyDF = DataFrame( Dict( [    :notneeded        => ["a", "b"],
+                                  :upper_left_x     => [12.5, 10.0],
+                                  :lower_right_x    => [17.5, 20.0],
+                                  :upper_left_y     => [7.50, 5.00],
+                                  :lower_right_y    => [12.5, 15.0]
+                             ] ) )
+    #Convert barycenter boxes to ULLR
+    barycenter_boxes!( barycenter )
+    @test all( Matrix(KeyDF) .== Matrix(barycenter[!, names(KeyDF)]) )
+
+    area!(barycenter)
+    @test all( barycenter[ :Area ] .== [ 25, 100 ] )
+
+end
+
 @testset "Box Translate and Clamp Tests" begin
     a            = Box(5,5,15,15)
     trans_result = translate( a, -5, -5 )

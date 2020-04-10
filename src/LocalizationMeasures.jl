@@ -5,7 +5,6 @@ mutable struct Box
     lower_right_y::Number
 end
 
-
 """
     Base.:(==)(a::Box, b::Box)::Bool
 

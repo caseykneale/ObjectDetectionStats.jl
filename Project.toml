@@ -3,6 +3,9 @@ uuid = "06718956-e3b8-45c5-a167-688b8218b63e"
 authors = ["Casey Kneale"]
 version = "0.1.2"
 
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+
 [compat]
 julia = "^1"
 
