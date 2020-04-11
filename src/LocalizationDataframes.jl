@@ -124,7 +124,21 @@ function intersection_over_union( a::DataFrame, b::DataFrame )::DataFrame
     #Split data by each unique prediction
     #   -> sort by intersection over union (for each prediction all others are constant)
     #   -> grab the highest IoU and toss the rest.
-    return combine( map( x -> sort(x, :Intersection_Over_Union, rev = true)[1,:], groupby( output, :ID_A ) ) )
+    result = DataFrame( map( x -> sort(x, :Intersection_Over_Union, rev = true)[1,:], groupby( output, :ID_A ) ) )
+    #Find all GT's that have no matching predictions
+    possible_FNs = 1:first( size( b ) )
+    not_predicted = [ !( p in result.ID_B ) for p in possible_FNs ]
+    FNs = sum(not_predicted)
+    definite_FNs = possible_FNs[ not_predicted ]
+    FN_df = DataFrame( (    :ID_A => zeros( Int, FNs ),
+                            :ID_B => definite_FNs,
+                            :class_labels => b.class_labels[definite_FNs],
+                            :Intersection_Over_Union => zeros( Float64, FNs ),
+                            :Vote_Matches => repeat( [false], FNs ),
+                            :Highest_Prediction => zeros(Float64, FNs ),
+                            :Highest_Vote => repeat([:none], FNs)
+                        ) )
+    return vcat( result, FN_df )
 end
 
 """
@@ -132,14 +146,13 @@ end
 
 """
 function potential_scores( cur_IoU_df::DataFrame; IoU_threshold = 0.5 )
-    cur_IoU_df[ :iou_threshold ] = cur_IoU_df.Intersection_Over_Union .> IoU_threshold
-    #is TP or FN?
-    cur_IoU_df[ :TP_or_FN ] = cur_IoU_df.Vote_Matches .& cur_IoU_df.iou_threshold
+    cur_IoU_df[ !, :iou_threshold ] = cur_IoU_df.Intersection_Over_Union .> IoU_threshold
+    cur_IoU_df[ !, :TP_or_FN ] = cur_IoU_df.Vote_Matches .& cur_IoU_df.iou_threshold
     #Ensure we do not double dip from a GT prediction. Only one prediction can map to a GT here...
     #Group by ground truth class label
     #   -> sort by the highest predicted class score
-    #       _-> find first prediced class matches above an IoU threshold
-    for gdf in groupby( cur_IoU_df, :class_labels )
+    #       -> find first predicted class matches above an IoU threshold
+    for gdf in groupby( cur_IoU_df, :ID_B )
         sort!( cur_IoU_df, :Highest_Prediction, rev = true)
         kept_first = false
         for row in eachrow( gdf )
@@ -187,6 +200,7 @@ function (ods::ObjectDetectionStats)( predictions::DataFrame, groundtruth::DataF
     TP_or_FN, FP_or_FN = potential_scores( IoU_map; IoU_threshold = ods.IoU_threshold )
     ods.TP_or_FN = ismissing(ods.TP_or_FN) ? TP_or_FN : vcat( ods.TP_or_FN, TP_or_FN )
     ods.FP_or_FN = ismissing(ods.FP_or_FN) ? FP_or_FN : vcat( ods.FP_or_FN, FP_or_FN )
+    #find definitive false negatives: IE GT instances without any mappable predictions
     return nothing
 end
 
@@ -195,30 +209,43 @@ using DataFrames
 KeyDF = DataFrame( Dict( [    :a               => [0.8, 0.1, 0.1],
                               :b               => [0.1, 0.7, 0.1],
                               :c               => [0.1, 0.2, 0.8],
-                              :upper_left_x     => [12.5, 10.0 ,20.0],
-                              :lower_right_x    => [17.5, 20.0, 30.0],
-                              :upper_left_y     => [7.50, 5.00, 30.0],
-                              :lower_right_y    => [12.5, 15.0, 35.0]
+                              :upper_left_x     => [1., 4., 7.],
+                              :lower_right_x    => [2., 5., 8.],
+                              :upper_left_y     => [1., 4., 7.],
+                              :lower_right_y    => [2., 5., 8.]
                          ] ) )
 
-GT = DataFrame( Dict( [     :class_labels     => [:a, :b, :c],
-                            :upper_left_x     => [12.5, 10.0, 16.0],
-                            :lower_right_x    => [17.5, 20.0, 60.0],
-                            :upper_left_y     => [7.50, 5.00, 16.0],
-                            :lower_right_y    => [12.5, 15.0, 20.0]
+#4th b has no matches
+GT = DataFrame( Dict( [     :class_labels     => [:a, :b, :c, :b],
+                            :upper_left_x     => [1., 3.5, 7., 10.],
+                            :lower_right_x    => [2., 4.5, 8., 11.],
+                            :upper_left_y     => [1., 3.5, 7., 10.],
+                            :lower_right_y    => [2., 4.5, 8., 11.]
                       ] ) )
 
 ods = ObjectDetectionStats( [ :a, :b, :c ]; IoU_threshold = 0.5 )
 
 ods( KeyDF, GT )
 
-ods.FP_or_FN
+ods.TP_or_FN.Highest_Prediction
+ods.TP_or_FN.Intersection_Over_Union
+
+ods.FP_or_FN.Highest_Prediction
+ods.FP_or_FN.Intersection_Over_Union
 
 
 function PR_curve( ods::ObjectDetectionStats, class_label::Symbol )
 
 end
 
-function average_precision( ods::ObjectDetectionStats, class_number::Symbol )
+function average_precision( ods::ObjectDetectionStats, class_label::Symbol )
+    max_TPs = first( size( ods.TP_or_FN ) )
+    class_wise_TP_or_FN = filter( row -> row.class_labels != class_label, ods.TP_or_FN )
+    class_wise_FP_or_FN = filter( row -> row.class_labels != class_label, ods.FP_or_FN )
+
+    scores = vcat( class_wise_TP_or_FN.Highest_Prediction, class_wise_FP_or_FN.Highest_Prediction)
+
+
+    class_wise_TP_or_FN.Highest_Prediction .>
 
 end
