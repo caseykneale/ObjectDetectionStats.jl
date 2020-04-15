@@ -1,5 +1,5 @@
 module ObjectDetectionStats
-    using DataFrames
+    using DataFrames, SigFigs
     include("LocalizationMeasures.jl")
     export Box, ==, barycenterbox, LLURtoULLR, translate, translate!,
         clamp, clamp!, area, intersection_area, intersection_over_union

@@ -88,7 +88,7 @@ Calculates the area of intersection between 2 DataFrames containing ULLR boxes.
 This returns a new DataFrame
 
 """
-function intersection_over_union( a::DataFrame, b::DataFrame )::DataFrame
+function intersection_over_union( a::DataFrame, b::DataFrame )::Tuple{DataFrame,DataFrame}
     @assert( has_required_columns( a, ULLR_required_columns ), "Input dataframe does not have the required columns: $ULLR_required_columns. Please check spelling and capitalization of column names and ensure the format is ULLR." )
     @assert( has_required_columns( b, ULLR_required_columns ), "Input dataframe does not have the required columns: $ULLR_required_columns. Please check spelling and capitalization of column names and ensure the format is ULLR." )
     @assert( has_required_columns( a, [:Area] ), "Input dataframe does not have the required columns: Area. Please run `area()` on the individual dataframes." )
@@ -138,7 +138,7 @@ function intersection_over_union( a::DataFrame, b::DataFrame )::DataFrame
                             :Highest_Prediction => zeros(Float64, FNs ),
                             :Highest_Vote => repeat([:none], FNs)
                         ) )
-    return vcat( result, FN_df )
+    return result, FN_df
 end
 
 """
@@ -165,13 +165,14 @@ function potential_scores( cur_IoU_df::DataFrame; IoU_threshold = 0.5 )
         end
     end
     #Bifurcate DF on the possibility of true positives
-    TP_or_FN, FP_or_FN = DataFrame.( collect( groupby( cur_IoU_df, :TP_or_FN ) ) )
-    return TP_or_FN, FP_or_FN
+    TP_or_FN, FP_or_TN = DataFrame.( collect( groupby( cur_IoU_df, :TP_or_FN ) ) )
+    return TP_or_FN, FP_or_TN
 end
 
 mutable struct ObjectDetectionStats
     TP_or_FN::Union{ Missing, DataFrame }
-    FP_or_FN::Union{ Missing, DataFrame }
+    FP_or_TN::Union{ Missing, DataFrame }
+    FN::Union{ Missing, DataFrame }
     classnames::Vector{ Symbol }
     IoU_threshold::Float64
 end
@@ -183,7 +184,7 @@ Instantiates an `ObjectDetectionStats` object.
 
 """
 function ObjectDetectionStats( classnames::Vector{Symbol}; IoU_threshold = 0.5 )
-    return ObjectDetectionStats( missing, missing, classnames, IoU_threshold )
+    return ObjectDetectionStats( missing, missing, missing, classnames, IoU_threshold )
 end
 
 """
@@ -196,23 +197,24 @@ function (ods::ObjectDetectionStats)( predictions::DataFrame, groundtruth::DataF
     area!( predictions )
     highest_vote!( predictions, ods.classnames )
     area!( groundtruth )
-    IoU_map = intersection_over_union( predictions, groundtruth )
-    TP_or_FN, FP_or_FN = potential_scores( IoU_map; IoU_threshold = ods.IoU_threshold )
+    IoU_map, FN_df = intersection_over_union( predictions, groundtruth )
+    TP_or_FN, FP_or_TN = potential_scores( IoU_map; IoU_threshold = ods.IoU_threshold )
     ods.TP_or_FN = ismissing(ods.TP_or_FN) ? TP_or_FN : vcat( ods.TP_or_FN, TP_or_FN )
-    ods.FP_or_FN = ismissing(ods.FP_or_FN) ? FP_or_FN : vcat( ods.FP_or_FN, FP_or_FN )
+    ods.FP_or_TN = ismissing(ods.FP_or_TN) ? FP_or_TN : vcat( ods.FP_or_TN, FP_or_TN )
+    ods.FN = ismissing( ods.FN ) ? FN_df : vcat( ods.FN, FN_df )
     #find definitive false negatives: IE GT instances without any mappable predictions
     return nothing
 end
 
 using DataFrames
 
-KeyDF = DataFrame( Dict( [    :a               => [0.8, 0.1, 0.1],
-                              :b               => [0.1, 0.7, 0.1],
-                              :c               => [0.1, 0.2, 0.8],
-                              :upper_left_x     => [1., 4., 7.],
-                              :lower_right_x    => [2., 5., 8.],
-                              :upper_left_y     => [1., 4., 7.],
-                              :lower_right_y    => [2., 5., 8.]
+KeyDF = DataFrame( Dict( [    :a               => [0.8, 0.8, 0.1, 0.1],
+                              :b               => [0.1, 0.1, 0.7, 0.1],
+                              :c               => [0.1, 0.1, 0.2, 0.8],
+                              :upper_left_x     => [1., 1.1, 4., 7.],
+                              :lower_right_x    => [2., 2.0, 5., 8.],
+                              :upper_left_y     => [1., 1.1, 1., 7.],
+                              :lower_right_y    => [2., 2.0, 5., 8.]
                          ] ) )
 
 #4th b has no matches
@@ -230,9 +232,11 @@ ods( KeyDF, GT )
 ods.TP_or_FN.Highest_Prediction
 ods.TP_or_FN.Intersection_Over_Union
 
-ods.FP_or_FN.Highest_Prediction
-ods.FP_or_FN.Intersection_Over_Union
+ods.FP_or_TN.Highest_Prediction
+ods.FP_or_TN.Intersection_Over_Union
 
+ods.FN.Highest_Prediction
+ods.FN.Intersection_Over_Union
 
 function PR_curve( ods::ObjectDetectionStats, class_label::Symbol )
 
@@ -242,10 +246,21 @@ function average_precision( ods::ObjectDetectionStats, class_label::Symbol )
     max_TPs = first( size( ods.TP_or_FN ) )
     class_wise_TP_or_FN = filter( row -> row.class_labels != class_label, ods.TP_or_FN )
     class_wise_FP_or_FN = filter( row -> row.class_labels != class_label, ods.FP_or_FN )
-
+    class_wise_FN       = filter( row -> row.class_labels != class_label, ods.FN )
+    FNs = first( size( class_wise_FN ) )
     scores = vcat( class_wise_TP_or_FN.Highest_Prediction, class_wise_FP_or_FN.Highest_Prediction)
-
-
+    scores = round.( scores, sigdigits = 3 )
+    sort!( scores, rev = true )
+    len_score = length( scores )
+    statistics_df = DataFrame( Dict(    :Score => scores,
+                                        :TP => zeros(Int, len_score),
+                                        :FP => zeros(Int, len_score),
+                                        :FN => repeat( [FNs], len_score),
+                                        :Precision => zeros(Float64, len_score),
+                                        :Recall => zeros(Float64, len_score)
+                                ) )
     class_wise_TP_or_FN.Highest_Prediction .>
+    for score in scores
 
+    end
 end
