@@ -36,6 +36,7 @@ function LockandKeyLookup(  key, tumbler,
                                 first( size( key ) ), length.(tumbler) )
 end
 
+
 function get_smallest_pin( tumbler_values, tumbler_states, fn::Function )::Int
     not_nothing     = .!isnothing.( last.( tumbler_states ) )
     is_something    = sum( not_nothing )
